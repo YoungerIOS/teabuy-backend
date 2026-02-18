@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "app/main.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "app/main.py"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/v1/internal/cron/order-timeout",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
