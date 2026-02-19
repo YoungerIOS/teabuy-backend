@@ -16,9 +16,12 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
-        if self.database_url:
-            return self.database_url
-        return self.supabase_db_url
+        raw = self.database_url if self.database_url else self.supabase_db_url
+        # Supabase dashboard often provides `postgresql://...`.
+        # This project uses psycopg (SQLAlchemy dialect `postgresql+psycopg://`).
+        if raw.startswith("postgresql://"):
+            return raw.replace("postgresql://", "postgresql+psycopg://", 1)
+        return raw
 
 
 settings = Settings()
