@@ -15,7 +15,7 @@
   "crons": [
     {
       "path": "/api/v1/internal/cron/order-timeout",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
