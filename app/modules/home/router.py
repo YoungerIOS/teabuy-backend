@@ -54,9 +54,11 @@ def default_review_topics() -> list[dict]:
     return [
         {"title": "红茶", "imageUrl": f"{SUPABASE_REVIEW_BASE}/home_review_bg_1.png", "sort": 1},
         {"title": "菊花茶", "imageUrl": f"{SUPABASE_REVIEW_BASE}/home_review_bg_2.png", "sort": 2},
-        {"title": "普洱茶", "imageUrl": f"{SUPABASE_REVIEW_BASE}/home_review_bg_3.png", "sort": 3},
-        {"title": "绿茶", "imageUrl": f"{SUPABASE_REVIEW_BASE}/home_review_bg_4.png", "sort": 4},
-        {"title": "红茶", "imageUrl": f"{SUPABASE_REVIEW_BASE}/home_review_bg_1.png", "sort": 5},
+        {"title": "绿茶", "imageUrl": f"{SUPABASE_REVIEW_BASE}/home_review_bg_3.png", "sort": 3},
+        {"title": "普洱茶", "imageUrl": f"{SUPABASE_REVIEW_BASE}/home_review_bg_4.png", "sort": 4},
+        {"title": "大红袍", "imageUrl": f"{SUPABASE_REVIEW_BASE}/home_review_bg_5.png", "sort": 5},
+        {"title": "花茶", "imageUrl": f"{SUPABASE_REVIEW_BASE}/home_review_bg_6.png", "sort": 6},
+        {"title": "白茶", "imageUrl": f"{SUPABASE_REVIEW_BASE}/home_review_bg_7.png", "sort": 7},
     ]
 
 
