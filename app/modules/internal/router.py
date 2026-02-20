@@ -100,13 +100,16 @@ def put_home_banner_config(body: BannerConfigPayload, db: Session = Depends(get_
 def get_home_review_config(db: Session = Depends(get_db)):
     module = _get_review_module(db)
     if not module:
-        return ok({"title": "茶评", "topics": []})
+        return ok({"title": "茶评", "topics": [], "updatedAt": 0})
 
     payload = json.loads(module.payload_json or "{}")
     topics = payload.get("topics")
     if not isinstance(topics, list):
         topics = []
-    return ok({"title": module.title or "茶评", "topics": topics})
+    updated_at = payload.get("updatedAt")
+    if not isinstance(updated_at, int):
+        updated_at = 0
+    return ok({"title": module.title or "茶评", "topics": topics, "updatedAt": updated_at})
 
 
 @router.put("/home/review-config")
@@ -122,11 +125,12 @@ def put_home_review_config(body: ReviewConfigPayload, db: Session = Depends(get_
         )
         db.add(module)
 
+    updated_at = int(datetime.utcnow().timestamp())
     module.title = body.title
     module.payload_json = json.dumps(
-        {"topics": [item.model_dump() for item in body.topics]},
+        {"topics": [item.model_dump() for item in body.topics], "updatedAt": updated_at},
         ensure_ascii=False,
     )
     module.is_enabled = True
     db.commit()
-    return ok({"updated": True, "count": len(body.topics)})
+    return ok({"updated": True, "count": len(body.topics), "updatedAt": updated_at})

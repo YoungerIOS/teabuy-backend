@@ -62,6 +62,10 @@ def default_review_topics() -> list[dict]:
     ]
 
 
+def default_review_payload() -> dict:
+    return {"topics": default_review_topics(), "updatedAt": 0}
+
+
 @router.get("")
 def get_home(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     modules = db.execute(
@@ -74,7 +78,7 @@ def get_home(db: Session = Depends(get_db), user: User = Depends(get_current_use
                 "modules": [
                     {"key": "banner", "title": "推荐", "payload": {}},
                     {"key": "categories", "title": "分类", "payload": {}},
-                    {"key": "review", "title": "茶评", "payload": {"topics": default_review_topics()}},
+                    {"key": "review", "title": "茶评", "payload": default_review_payload()},
                 ],
                 "banners": default_banners(),
                 "unreadCount": unread,
@@ -84,14 +88,18 @@ def get_home(db: Session = Depends(get_db), user: User = Depends(get_current_use
     banners = default_banners()
     review_title = "茶评"
     review_topics = default_review_topics()
+    review_updated_at = 0
     for module in modules:
         if module.module_key != "banner":
             if module.module_key != "review":
                 continue
             payload = json.loads(module.payload_json or "{}")
             payload_topics = payload.get("topics")
+            payload_updated_at = payload.get("updatedAt")
             if isinstance(payload_topics, list) and len(payload_topics) > 0:
                 review_topics = payload_topics
+            if isinstance(payload_updated_at, int):
+                review_updated_at = payload_updated_at
             if module.title:
                 review_title = module.title
             continue
@@ -107,7 +115,9 @@ def get_home(db: Session = Depends(get_db), user: User = Depends(get_current_use
     ]
     has_review_module = any(m.get("key") == "review" for m in module_items)
     if not has_review_module:
-        module_items.append({"key": "review", "title": review_title, "payload": {"topics": review_topics}})
+        module_items.append(
+            {"key": "review", "title": review_title, "payload": {"topics": review_topics, "updatedAt": review_updated_at}}
+        )
 
     return ok(
         {
