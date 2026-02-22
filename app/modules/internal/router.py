@@ -36,6 +36,39 @@ class ReviewConfigPayload(BaseModel):
     topics: list[ReviewConfigItem]
 
 
+class NewTeaConfigItem(BaseModel):
+    title: str
+    subtitle: str = ""
+    imageUrl: str
+    wantsText: str = ""
+    sort: int = 0
+
+
+class NewTeaConfigPayload(BaseModel):
+    title: str = "新茶上市"
+    notice: str = "限量好茶免费品，品出慢时光"
+    items: list[NewTeaConfigItem]
+
+
+class PromoConfigSection(BaseModel):
+    key: str
+    title: str
+    subtitle: str = ""
+    imageUrl: str = ""
+    leftImageUrl: str = ""
+    rightImageUrl: str = ""
+    badgeText: str = ""
+    priceLabel: str = ""
+    priceText: str = ""
+    ctaText: str = ""
+    sort: int = 0
+
+
+class PromoConfigPayload(BaseModel):
+    title: str = "今日秒杀"
+    sections: list[PromoConfigSection]
+
+
 def _get_banner_module(db: Session) -> HomeModule | None:
     return db.execute(
         select(HomeModule).where(HomeModule.module_key == "banner").order_by(HomeModule.sort_order.asc())
@@ -46,6 +79,29 @@ def _get_review_module(db: Session) -> HomeModule | None:
     return db.execute(
         select(HomeModule).where(HomeModule.module_key == "review").order_by(HomeModule.sort_order.asc())
     ).scalars().first()
+
+
+def _get_new_tea_module(db: Session) -> HomeModule | None:
+    return db.execute(
+        select(HomeModule).where(HomeModule.module_key == "new_tea").order_by(HomeModule.sort_order.asc())
+    ).scalars().first()
+
+
+def _get_promo_module(db: Session) -> HomeModule | None:
+    return db.execute(
+        select(HomeModule).where(HomeModule.module_key == "promo").order_by(HomeModule.sort_order.asc())
+    ).scalars().first()
+
+
+def _safe_payload(module: HomeModule | None) -> dict:
+    if module is None:
+        return {}
+    raw = module.payload_json or "{}"
+    try:
+        payload = json.loads(raw)
+    except Exception:
+        payload = {}
+    return payload if isinstance(payload, dict) else {}
 
 
 @router.get("/cron/order-timeout")
@@ -66,7 +122,7 @@ def get_home_banner_config(db: Session = Depends(get_db)):
     if not module:
         return ok({"title": "推荐", "banners": []})
 
-    payload = json.loads(module.payload_json or "{}")
+    payload = _safe_payload(module)
     banners = payload.get("banners")
     if not isinstance(banners, list):
         banners = []
@@ -102,7 +158,7 @@ def get_home_review_config(db: Session = Depends(get_db)):
     if not module:
         return ok({"title": "茶评", "topics": [], "updatedAt": 0})
 
-    payload = json.loads(module.payload_json or "{}")
+    payload = _safe_payload(module)
     topics = payload.get("topics")
     if not isinstance(topics, list):
         topics = []
@@ -134,3 +190,97 @@ def put_home_review_config(body: ReviewConfigPayload, db: Session = Depends(get_
     module.is_enabled = True
     db.commit()
     return ok({"updated": True, "count": len(body.topics), "updatedAt": updated_at})
+
+
+@router.get("/home/new-tea-config")
+def get_home_new_tea_config(db: Session = Depends(get_db)):
+    module = _get_new_tea_module(db)
+    if not module:
+        return ok({"title": "新茶上市", "notice": "限量好茶免费品，品出慢时光", "items": [], "updatedAt": 0})
+
+    payload = _safe_payload(module)
+    items = payload.get("items")
+    if not isinstance(items, list):
+        items = []
+    notice = payload.get("notice")
+    if not isinstance(notice, str):
+        notice = "限量好茶免费品，品出慢时光"
+    updated_at = payload.get("updatedAt")
+    if not isinstance(updated_at, int):
+        updated_at = 0
+    return ok(
+        {
+            "title": module.title or "新茶上市",
+            "notice": notice,
+            "items": items,
+            "updatedAt": updated_at,
+        }
+    )
+
+
+@router.put("/home/new-tea-config")
+def put_home_new_tea_config(body: NewTeaConfigPayload, db: Session = Depends(get_db)):
+    module = _get_new_tea_module(db)
+    if not module:
+        module = HomeModule(
+            module_key="new_tea",
+            title=body.title,
+            payload_json="{}",
+            sort_order=4,
+            is_enabled=True,
+        )
+        db.add(module)
+
+    updated_at = int(datetime.utcnow().timestamp())
+    module.title = body.title
+    module.payload_json = json.dumps(
+        {
+            "notice": body.notice,
+            "items": [item.model_dump() for item in body.items],
+            "updatedAt": updated_at,
+        },
+        ensure_ascii=False,
+    )
+    module.is_enabled = True
+    db.commit()
+    return ok({"updated": True, "count": len(body.items), "updatedAt": updated_at})
+
+
+@router.get("/home/promo-config")
+def get_home_promo_config(db: Session = Depends(get_db)):
+    module = _get_promo_module(db)
+    if not module:
+        return ok({"title": "今日秒杀", "sections": [], "updatedAt": 0})
+
+    payload = _safe_payload(module)
+    sections = payload.get("sections")
+    if not isinstance(sections, list):
+        sections = []
+    updated_at = payload.get("updatedAt")
+    if not isinstance(updated_at, int):
+        updated_at = 0
+    return ok({"title": module.title or "今日秒杀", "sections": sections, "updatedAt": updated_at})
+
+
+@router.put("/home/promo-config")
+def put_home_promo_config(body: PromoConfigPayload, db: Session = Depends(get_db)):
+    module = _get_promo_module(db)
+    if not module:
+        module = HomeModule(
+            module_key="promo",
+            title=body.title,
+            payload_json="{}",
+            sort_order=5,
+            is_enabled=True,
+        )
+        db.add(module)
+
+    updated_at = int(datetime.utcnow().timestamp())
+    module.title = body.title
+    module.payload_json = json.dumps(
+        {"sections": [item.model_dump() for item in body.sections], "updatedAt": updated_at},
+        ensure_ascii=False,
+    )
+    module.is_enabled = True
+    db.commit()
+    return ok({"updated": True, "count": len(body.sections), "updatedAt": updated_at})
