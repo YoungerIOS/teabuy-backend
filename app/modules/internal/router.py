@@ -69,6 +69,60 @@ class PromoConfigPayload(BaseModel):
     sections: list[PromoConfigSection]
 
 
+class FeaturedPrice(BaseModel):
+    currencySymbol: str = "￥"
+    amount: str = ""
+    unit: str = "/盒"
+
+
+class FeaturedListCard(BaseModel):
+    name: str
+    subtitle: str = ""
+    marketingText: str = ""
+    soldCountText: str = ""
+    badgePrimary: str = ""
+    badgeSecondary: str = ""
+    price: FeaturedPrice = FeaturedPrice()
+    imageUrl: str
+    linkType: str = "product"
+    linkValue: str = ""
+    sort: int = 0
+
+
+class FeaturedConfigItem(BaseModel):
+    title: str
+    subtitle: str = ""
+    imageUrl: str
+    tagText: str = ""
+    priceText: str = ""
+    cards: list[FeaturedListCard] = []
+    linkType: str = "product"
+    linkValue: str = ""
+    sort: int = 0
+
+
+class FeaturedConfigSection(BaseModel):
+    key: str
+    title: str
+    subtitle: str = ""
+    layout: str = "grid_2x2"
+    items: list[FeaturedConfigItem]
+    sort: int = 0
+
+
+class FeaturedConfigTab(BaseModel):
+    key: str
+    title: str
+    sort: int = 0
+
+
+class FeaturedConfigPayload(BaseModel):
+    title: str = "精选"
+    tabs: list[FeaturedConfigTab] = []
+    activeTab: str = "recommend"
+    sections: list[FeaturedConfigSection]
+
+
 def _get_banner_module(db: Session) -> HomeModule | None:
     return db.execute(
         select(HomeModule).where(HomeModule.module_key == "banner").order_by(HomeModule.sort_order.asc())
@@ -93,6 +147,12 @@ def _get_promo_module(db: Session) -> HomeModule | None:
     ).scalars().first()
 
 
+def _get_featured_module(db: Session) -> HomeModule | None:
+    return db.execute(
+        select(HomeModule).where(HomeModule.module_key == "featured").order_by(HomeModule.sort_order.asc())
+    ).scalars().first()
+
+
 def _safe_payload(module: HomeModule | None) -> dict:
     if module is None:
         return {}
@@ -106,12 +166,19 @@ def _safe_payload(module: HomeModule | None) -> dict:
 
 @router.get("/cron/order-timeout")
 def cancel_timeout_orders(db: Session = Depends(get_db)):
+    from app.models import OrderItem, ProductSku
     deadline = datetime.utcnow() - timedelta(minutes=30)
     rows = db.execute(
         select(Order).where(Order.status == "PENDING_PAYMENT", Order.created_at < deadline)
     ).scalars().all()
     for o in rows:
         o.status = "CANCELED"
+        # Restore stock
+        order_items = db.execute(select(OrderItem).where(OrderItem.order_id == o.id)).scalars().all()
+        for oi in order_items:
+            sku = db.get(ProductSku, oi.sku_id)
+            if sku:
+                sku.stock += oi.quantity
     db.commit()
     return ok({"canceled": len(rows)})
 
@@ -279,6 +346,65 @@ def put_home_promo_config(body: PromoConfigPayload, db: Session = Depends(get_db
     module.title = body.title
     module.payload_json = json.dumps(
         {"sections": [item.model_dump() for item in body.sections], "updatedAt": updated_at},
+        ensure_ascii=False,
+    )
+    module.is_enabled = True
+    db.commit()
+    return ok({"updated": True, "count": len(body.sections), "updatedAt": updated_at})
+
+
+@router.get("/home/featured-config")
+def get_home_featured_config(db: Session = Depends(get_db)):
+    module = _get_featured_module(db)
+    if not module:
+        return ok({"title": "精选", "tabs": [], "activeTab": "recommend", "sections": [], "updatedAt": 0})
+
+    payload = _safe_payload(module)
+    tabs = payload.get("tabs")
+    if not isinstance(tabs, list):
+        tabs = []
+    active_tab = payload.get("activeTab")
+    if not isinstance(active_tab, str):
+        active_tab = "recommend"
+    sections = payload.get("sections")
+    if not isinstance(sections, list):
+        sections = []
+    updated_at = payload.get("updatedAt")
+    if not isinstance(updated_at, int):
+        updated_at = 0
+    return ok(
+        {
+            "title": module.title or "精选",
+            "tabs": tabs,
+            "activeTab": active_tab,
+            "sections": sections,
+            "updatedAt": updated_at,
+        }
+    )
+
+
+@router.put("/home/featured-config")
+def put_home_featured_config(body: FeaturedConfigPayload, db: Session = Depends(get_db)):
+    module = _get_featured_module(db)
+    if not module:
+        module = HomeModule(
+            module_key="featured",
+            title=body.title,
+            payload_json="{}",
+            sort_order=6,
+            is_enabled=True,
+        )
+        db.add(module)
+
+    updated_at = int(datetime.utcnow().timestamp())
+    module.title = body.title
+    module.payload_json = json.dumps(
+        {
+            "tabs": [item.model_dump() for item in body.tabs],
+            "activeTab": body.activeTab,
+            "sections": [item.model_dump() for item in body.sections],
+            "updatedAt": updated_at,
+        },
         ensure_ascii=False,
     )
     module.is_enabled = True

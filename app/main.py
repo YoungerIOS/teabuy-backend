@@ -14,6 +14,7 @@ from app.modules.notification.router import router as notification_router
 from app.modules.order.router import router as order_router
 from app.modules.payment.router import router as payment_router
 from app.modules.profile.router import router as profile_router
+from app.modules.refund.router import router as refund_router
 from app.modules.review.router import router as review_router
 
 app = FastAPI(title=settings.app_name)
@@ -34,6 +35,7 @@ app.include_router(cart_router, prefix=api_prefix)
 app.include_router(address_router, prefix=api_prefix)
 app.include_router(order_router, prefix=api_prefix)
 app.include_router(payment_router, prefix=api_prefix)
+app.include_router(refund_router, prefix=api_prefix)
 app.include_router(review_router, prefix=api_prefix)
 app.include_router(profile_router, prefix=api_prefix)
 app.include_router(notification_router, prefix=api_prefix)

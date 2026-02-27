@@ -117,6 +117,8 @@ class Order(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     order_no: Mapped[str] = mapped_column(String(40), unique=True, index=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    address_id: Mapped[str] = mapped_column(String(36), default="")
+    address_snapshot: Mapped[str] = mapped_column(Text, default="{}")
     status: Mapped[str] = mapped_column(String(30), default="PENDING_PAYMENT")
     total_cent: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -128,6 +130,9 @@ class OrderItem(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     order_id: Mapped[str] = mapped_column(String(36), ForeignKey("orders.id"), index=True)
     sku_id: Mapped[str] = mapped_column(String(36), ForeignKey("product_skus.id"), index=True)
+    product_name: Mapped[str] = mapped_column(String(120), default="")
+    sku_name: Mapped[str] = mapped_column(String(120), default="")
+    image_url: Mapped[str] = mapped_column(String(500), default="")
     quantity: Mapped[int] = mapped_column(Integer)
     price_cent: Mapped[int] = mapped_column(Integer)
 
@@ -185,4 +190,16 @@ class IdempotencyKey(Base):
     request_key: Mapped[str] = mapped_column(String(80))
     resource_type: Mapped[str] = mapped_column(String(30), default="order")
     resource_id: Mapped[str] = mapped_column(String(36), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Refund(Base):
+    __tablename__ = "refunds"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    order_id: Mapped[str] = mapped_column(String(36), ForeignKey("orders.id"), index=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    reason: Mapped[str] = mapped_column(Text, default="")
+    amount_cent: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -16,6 +16,7 @@ SUPABASE_BANNER_BASE = "https://nfzznasyztaontqmuhjq.supabase.co/storage/v1/obje
 SUPABASE_REVIEW_BASE = "https://nfzznasyztaontqmuhjq.supabase.co/storage/v1/object/public/product-images/home"
 SUPABASE_NEW_TEA_BASE = "https://nfzznasyztaontqmuhjq.supabase.co/storage/v1/object/public/product-images/home"
 SUPABASE_PROMO_BASE = "https://nfzznasyztaontqmuhjq.supabase.co/storage/v1/object/public/product-images/home"
+SUPABASE_FEATURED_BASE = "https://nfzznasyztaontqmuhjq.supabase.co/storage/v1/object/public/product-images/home"
 
 
 def default_banners() -> list[dict]:
@@ -146,6 +147,258 @@ def default_promo_payload() -> dict:
     return {"sections": default_promo_sections(), "updatedAt": 0}
 
 
+def default_featured_sections() -> list[dict]:
+    return [
+        {
+            "key": "hero_banner",
+            "title": "主视觉",
+            "subtitle": "",
+            "layout": "banner",
+            "items": [
+                {
+                    "title": "精选主图",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_banner_1.png",
+                    "tagText": "",
+                    "priceText": "",
+                    "linkType": "activity",
+                    "linkValue": "featured_hero_1",
+                    "sort": 1,
+                }
+            ],
+            "sort": 1,
+        },
+        {
+            "key": "tea_circle",
+            "title": "高山绿茶",
+            "subtitle": "",
+            "layout": "circle_icons",
+            "items": [
+                {
+                    "title": "高山绿茶",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_review_bg_3.png",
+                    "tagText": "",
+                    "priceText": "",
+                    "linkType": "product",
+                    "linkValue": "featured_circle_1",
+                    "sort": 1,
+                },
+                {
+                    "title": "银针绿茶",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_review_bg_4.png",
+                    "tagText": "",
+                    "priceText": "",
+                    "linkType": "product",
+                    "linkValue": "featured_circle_2",
+                    "sort": 2,
+                },
+                {
+                    "title": "碧螺春",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_review_bg_1.png",
+                    "tagText": "",
+                    "priceText": "",
+                    "linkType": "product",
+                    "linkValue": "featured_circle_3",
+                    "sort": 3,
+                },
+                {
+                    "title": "菊花茶",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_review_bg_2.png",
+                    "tagText": "",
+                    "priceText": "",
+                    "linkType": "product",
+                    "linkValue": "featured_circle_4",
+                    "sort": 4,
+                },
+                {
+                    "title": "红茶",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_review_bg_5.png",
+                    "tagText": "",
+                    "priceText": "",
+                    "linkType": "product",
+                    "linkValue": "featured_circle_5",
+                    "sort": 5,
+                },
+                {
+                    "title": "花茶",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_review_bg_6.png",
+                    "tagText": "",
+                    "priceText": "",
+                    "linkType": "product",
+                    "linkValue": "featured_circle_6",
+                    "sort": 6,
+                },
+                {
+                    "title": "白茶",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_review_bg_7.png",
+                    "tagText": "",
+                    "priceText": "",
+                    "linkType": "product",
+                    "linkValue": "featured_circle_7",
+                    "sort": 7,
+                },
+            ],
+            "sort": 2,
+        },
+        {
+            "key": "boutique_recommend",
+            "title": "精品推荐",
+            "subtitle": "",
+            "layout": "small_card_scroll",
+            "items": [
+                {
+                    "title": "绿茶",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_new_tea_1.png",
+                    "tagText": "",
+                    "priceText": "￥128",
+                    "linkType": "product",
+                    "linkValue": "featured_boutique_1",
+                    "sort": 1,
+                },
+                {
+                    "title": "白茶",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_new_tea_2.png",
+                    "tagText": "",
+                    "priceText": "￥168",
+                    "linkType": "product",
+                    "linkValue": "featured_boutique_2",
+                    "sort": 2,
+                },
+                {
+                    "title": "菊花茶",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_review_bg_2.png",
+                    "tagText": "",
+                    "priceText": "￥99",
+                    "linkType": "product",
+                    "linkValue": "featured_boutique_3",
+                    "sort": 3,
+                },
+                {
+                    "title": "红茶",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_review_bg_1.png",
+                    "tagText": "",
+                    "priceText": "￥118",
+                    "linkType": "product",
+                    "linkValue": "featured_boutique_4",
+                    "sort": 4,
+                },
+            ],
+            "sort": 3,
+        },
+        {
+            "key": "recommend_list",
+            "title": "推荐",
+            "subtitle": "",
+            "layout": "list_card",
+            "items": [
+                {
+                    "title": "推荐组 1",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_new_tea_1.png",
+                    "tagText": "",
+                    "priceText": "",
+                    "cards": [
+                        {
+                            "name": "嘉应普洱茶",
+                            "subtitle": "客家普洱茶",
+                            "marketingText": "新品上市",
+                            "soldCountText": "114214人买过",
+                            "badgePrimary": "新品上市",
+                            "badgeSecondary": "月销冠军",
+                            "price": {"currencySymbol": "￥", "amount": "114.00", "unit": "/盒"},
+                            "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_new_tea_1.png",
+                            "linkType": "product",
+                            "linkValue": "featured_list_1_a",
+                            "sort": 1,
+                        },
+                        {
+                            "name": "嘉应菊花茶",
+                            "subtitle": "嘉应丰顺茶饼",
+                            "marketingText": "限时折扣",
+                            "soldCountText": "114244人买过",
+                            "badgePrimary": "新品上市",
+                            "badgeSecondary": "限时折扣",
+                            "price": {"currencySymbol": "￥", "amount": "53.00", "unit": "/盒"},
+                            "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_new_tea_2.png",
+                            "linkType": "product",
+                            "linkValue": "featured_list_1_b",
+                            "sort": 2,
+                        },
+                    ],
+                    "linkType": "activity",
+                    "linkValue": "featured_list_1",
+                    "sort": 1,
+                },
+                {
+                    "title": "推荐组 2",
+                    "subtitle": "",
+                    "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_new_tea_2.png",
+                    "tagText": "",
+                    "priceText": "",
+                    "cards": [
+                        {
+                            "name": "嘉应普洱茶",
+                            "subtitle": "客家普洱茶",
+                            "marketingText": "新品上市",
+                            "soldCountText": "114214人买过",
+                            "badgePrimary": "新品上市",
+                            "badgeSecondary": "月销冠军",
+                            "price": {"currencySymbol": "￥", "amount": "114.00", "unit": "/盒"},
+                            "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_new_tea_1.png",
+                            "linkType": "product",
+                            "linkValue": "featured_list_2_a",
+                            "sort": 1,
+                        },
+                        {
+                            "name": "嘉应菊花茶",
+                            "subtitle": "嘉应丰顺茶饼",
+                            "marketingText": "限时折扣",
+                            "soldCountText": "114244人买过",
+                            "badgePrimary": "新品上市",
+                            "badgeSecondary": "限时折扣",
+                            "price": {"currencySymbol": "￥", "amount": "53.00", "unit": "/盒"},
+                            "imageUrl": f"{SUPABASE_FEATURED_BASE}/home_new_tea_2.png",
+                            "linkType": "product",
+                            "linkValue": "featured_list_2_b",
+                            "sort": 2,
+                        },
+                    ],
+                    "linkType": "activity",
+                    "linkValue": "featured_list_2",
+                    "sort": 2,
+                },
+            ],
+            "sort": 4,
+        },
+    ]
+
+
+def default_featured_payload() -> dict:
+    return {
+        "tabs": [
+            {"key": "recommend", "title": "推荐", "sort": 1},
+            {"key": "sale", "title": "特卖", "sort": 2},
+            {"key": "hot", "title": "热销", "sort": 3},
+            {"key": "tea", "title": "茶叶", "sort": 4},
+            {"key": "ware", "title": "茶具", "sort": 5},
+        ],
+        "activeTab": "hot",
+        "sections": default_featured_sections(),
+        "updatedAt": 0,
+    }
+
+
 def safe_payload(module: HomeModule) -> dict:
     raw = module.payload_json or "{}"
     try:
@@ -170,6 +423,7 @@ def get_home(db: Session = Depends(get_db), user: User = Depends(get_current_use
                     {"key": "review", "title": "茶评", "payload": default_review_payload()},
                     {"key": "new_tea", "title": "新茶上市", "payload": default_new_tea_payload()},
                     {"key": "promo", "title": "今日秒杀", "payload": default_promo_payload()},
+                    {"key": "featured", "title": "精选", "payload": default_featured_payload()},
                 ],
                 "banners": default_banners(),
                 "unreadCount": unread,
@@ -218,8 +472,12 @@ def get_home(db: Session = Depends(get_db), user: User = Depends(get_current_use
     if not has_promo_module:
         module_items.append({"key": "promo", "title": "今日秒杀", "payload": default_promo_payload()})
 
+    has_featured_module = any(m.get("key") == "featured" for m in module_items)
+    if not has_featured_module:
+        module_items.append({"key": "featured", "title": "精选", "payload": default_featured_payload()})
+
     # Keep deterministic module order for client rendering.
-    module_rank = {"banner": 1, "categories": 2, "review": 3, "new_tea": 4, "promo": 5}
+    module_rank = {"banner": 1, "categories": 2, "review": 3, "new_tea": 4, "promo": 5, "featured": 6}
     module_items.sort(key=lambda item: module_rank.get(item.get("key"), 100))
 
     return ok(
