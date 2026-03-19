@@ -34,6 +34,8 @@ def review_detail(review_id: str, db: Session = Depends(get_db)):
 
 @router.post("")
 def create_review(req: CreateReviewReq, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if req.rating < 1 or req.rating > 5:
+        raise ApiError(40045, "rating must be between 1 and 5", 400)
     r = Review(user_id=user.id, product_id=req.productId, rating=req.rating, content=req.content)
     db.add(r)
     db.commit()

@@ -18,15 +18,15 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return pwd_context.verify(password, hashed_password)
 
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(user_id: str, refresh_version: int = 1) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_access_expire_min)
-    payload = {"sub": user_id, "type": "access", "exp": expire}
+    payload = {"sub": user_id, "type": "access", "rv": refresh_version, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
 
 
-def create_refresh_token(user_id: str) -> str:
+def create_refresh_token(user_id: str, refresh_version: int = 1) -> str:
     expire = datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_expire_days)
-    payload = {"sub": user_id, "type": "refresh", "exp": expire}
+    payload = {"sub": user_id, "type": "refresh", "rv": refresh_version, "exp": expire}
     return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
 
 

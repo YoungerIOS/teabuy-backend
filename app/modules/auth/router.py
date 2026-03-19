@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.deps import get_current_user
 from app.core.errors import ApiError
 from app.core.response import ok
 from app.core.security import (
@@ -42,9 +43,17 @@ def register(req: RegisterReq, db: Session = Depends(get_db)):
     db.add(user)
     db.flush()
     db.add(UserCredential(user_id=user.id, password_hash=hash_password(req.password)))
-    db.add(UserSession(user_id=user.id, refresh_version=1, updated_at=datetime.utcnow()))
+    session = UserSession(user_id=user.id, refresh_version=1, updated_at=datetime.utcnow())
+    db.add(session)
     db.commit()
-    return ok({"userId": user.id})
+    return ok(
+        {
+            "userId": user.id,
+            "user": {"id": user.id, "username": user.username, "displayName": user.display_name, "role": user.role},
+            "accessToken": create_access_token(user.id, session.refresh_version),
+            "refreshToken": create_refresh_token(user.id, session.refresh_version),
+        }
+    )
 
 
 @router.post("/login")
@@ -56,26 +65,52 @@ def login(req: LoginReq, db: Session = Depends(get_db)):
     if not cred or not verify_password(req.password, cred.password_hash):
         raise ApiError(40112, "invalid credentials", 401)
 
+    session = db.execute(select(UserSession).where(UserSession.user_id == user.id)).scalar_one_or_none()
+    if not session:
+        session = UserSession(user_id=user.id, refresh_version=1, updated_at=datetime.utcnow())
+        db.add(session)
+    session.updated_at = datetime.utcnow()
+    db.commit()
+
     return ok(
         {
-            "accessToken": create_access_token(user.id),
-            "refreshToken": create_refresh_token(user.id),
-            "user": {"id": user.id, "username": user.username, "displayName": user.display_name},
+            "accessToken": create_access_token(user.id, session.refresh_version),
+            "refreshToken": create_refresh_token(user.id, session.refresh_version),
+            "user": {"id": user.id, "username": user.username, "displayName": user.display_name, "role": user.role},
         }
     )
 
 
 @router.post("/refresh")
-def refresh(req: RefreshReq):
+def refresh(req: RefreshReq, db: Session = Depends(get_db)):
     from app.core.security import decode_token
 
-    payload = decode_token(req.refresh_token)
+    try:
+        payload = decode_token(req.refresh_token)
+    except Exception as exc:
+        raise ApiError(40114, f"invalid refresh token: {exc}", 401)
     if payload.get("type") != "refresh":
         raise ApiError(40113, "invalid refresh token", 401)
     user_id = payload.get("sub", "")
-    return ok({"accessToken": create_access_token(user_id), "refreshToken": create_refresh_token(user_id)})
+    session = db.execute(select(UserSession).where(UserSession.user_id == user_id)).scalar_one_or_none()
+    if not session:
+        raise ApiError(40115, "session not found", 401)
+    token_rv = int(payload.get("rv", 0))
+    if token_rv != session.refresh_version:
+        raise ApiError(40116, "refresh token expired", 401)
+    return ok(
+        {
+            "accessToken": create_access_token(user_id, session.refresh_version),
+            "refreshToken": create_refresh_token(user_id, session.refresh_version),
+        }
+    )
 
 
 @router.post("/logout")
-def logout():
+def logout(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    session = db.execute(select(UserSession).where(UserSession.user_id == user.id)).scalar_one_or_none()
+    if session:
+        session.refresh_version += 1
+        session.updated_at = datetime.utcnow()
+        db.commit()
     return ok({"success": True})

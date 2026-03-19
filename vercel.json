@@ -14,7 +14,7 @@
   ],
   "crons": [
     {
-      "path": "/api/v1/internal/cron/order-timeout",
+      "path": "/api/v1/internal/cron/order-timeout?key=change-admin-key",
       "schedule": "0 0 * * *"
     }
   ]

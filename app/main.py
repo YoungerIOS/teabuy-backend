@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
+from app.core.middleware import request_context_middleware
 from app.core.response import ok
 from app.modules.address.router import router as address_router
 from app.modules.auth.router import router as auth_router
@@ -10,6 +11,8 @@ from app.modules.catalog.router import router as catalog_router
 from app.modules.health.router import router as health_router
 from app.modules.home.router import router as home_router
 from app.modules.internal.router import router as internal_router
+from app.modules.internal_catalog.router import router as internal_catalog_router
+from app.modules.navigation.router import router as navigation_router
 from app.modules.notification.router import router as notification_router
 from app.modules.order.router import router as order_router
 from app.modules.payment.router import router as payment_router
@@ -19,6 +22,7 @@ from app.modules.review.router import router as review_router
 
 app = FastAPI(title=settings.app_name)
 register_exception_handlers(app)
+app.middleware("http")(request_context_middleware)
 
 
 @app.get("/")
@@ -39,4 +43,6 @@ app.include_router(refund_router, prefix=api_prefix)
 app.include_router(review_router, prefix=api_prefix)
 app.include_router(profile_router, prefix=api_prefix)
 app.include_router(notification_router, prefix=api_prefix)
+app.include_router(navigation_router, prefix=api_prefix)
 app.include_router(internal_router, prefix=api_prefix)
+app.include_router(internal_catalog_router, prefix=api_prefix)

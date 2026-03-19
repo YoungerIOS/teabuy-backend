@@ -1,0 +1,1 @@
+# Internal catalog admin module

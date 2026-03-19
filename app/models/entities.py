@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -17,6 +17,7 @@ class User(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(64), default="")
+    role: Mapped[str] = mapped_column(String(16), default="user", index=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -52,8 +53,13 @@ class Product(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     name: Mapped[str] = mapped_column(String(120))
+    subtitle: Mapped[str] = mapped_column(String(160), default="")
     category_id: Mapped[str] = mapped_column(String(36), ForeignKey("categories.id"), index=True)
     description: Mapped[str] = mapped_column(Text, default="")
+    market_price_cent: Mapped[int] = mapped_column(Integer, default=0)
+    sold_count: Mapped[int] = mapped_column(Integer, default=0)
+    badge_primary: Mapped[str] = mapped_column(String(40), default="")
+    badge_secondary: Mapped[str] = mapped_column(String(40), default="")
     status: Mapped[str] = mapped_column(String(20), default="active")
 
 
@@ -122,6 +128,7 @@ class Order(Base):
     status: Mapped[str] = mapped_column(String(30), default="PENDING_PAYMENT")
     total_cent: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class OrderItem(Base):
@@ -156,7 +163,10 @@ class Payment(Base):
     provider: Mapped[str] = mapped_column(String(20), default="mock")
     status: Mapped[str] = mapped_column(String(20), default="INIT")
     amount_cent: Mapped[int] = mapped_column(Integer)
+    callback_no: Mapped[str] = mapped_column(String(80), default="")
+    callback_payload: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class Review(Base):
@@ -202,4 +212,25 @@ class Refund(Base):
     reason: Mapped[str] = mapped_column(Text, default="")
     amount_cent: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="PENDING")
+    reviewed_by: Mapped[str] = mapped_column(String(36), default="")
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    reject_reason: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class OrderStatusLog(Base):
+    __tablename__ = "order_status_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    order_id: Mapped[str] = mapped_column(String(36), ForeignKey("orders.id"), index=True)
+    from_status: Mapped[str] = mapped_column(String(30), default="")
+    to_status: Mapped[str] = mapped_column(String(30))
+    operator_id: Mapped[str] = mapped_column(String(36), default="")
+    operator_role: Mapped[str] = mapped_column(String(16), default="")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+Index("ix_orders_user_status_created", Order.user_id, Order.status, Order.created_at.desc())
+Index("ix_payments_order_created", Payment.order_id, Payment.created_at.desc())
+Index("ix_refunds_user_status_created", Refund.user_id, Refund.status, Refund.created_at.desc())

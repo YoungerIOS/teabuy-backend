@@ -1,14 +1,20 @@
 import json
 from datetime import datetime, timedelta
+from copy import deepcopy
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
+from app.core.config import settings
+from app.core.deps import require_admin
+from app.core.errors import ApiError
 from app.core.response import ok
 from app.models import HomeModule, Order
+from app.modules.home.router import default_featured_payload, normalize_featured_payload
+from app.services.order_status import log_order_status_change
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
@@ -23,6 +29,20 @@ class BannerConfigItem(BaseModel):
 class BannerConfigPayload(BaseModel):
     title: str = "推荐"
     banners: list[BannerConfigItem]
+
+
+class CategoryConfigItem(BaseModel):
+    key: str
+    name: str
+    iconUrl: str = ""
+    linkType: str = "category"
+    linkValue: str = ""
+    sort: int = 0
+
+
+class CategoryConfigPayload(BaseModel):
+    title: str = "分类"
+    items: list[CategoryConfigItem]
 
 
 class ReviewConfigItem(BaseModel):
@@ -41,6 +61,8 @@ class NewTeaConfigItem(BaseModel):
     subtitle: str = ""
     imageUrl: str
     wantsText: str = ""
+    linkType: str = "keyword"
+    linkValue: str = ""
     sort: int = 0
 
 
@@ -61,6 +83,8 @@ class PromoConfigSection(BaseModel):
     priceLabel: str = ""
     priceText: str = ""
     ctaText: str = ""
+    linkType: str = "activity"
+    linkValue: str = ""
     sort: int = 0
 
 
@@ -135,6 +159,12 @@ def _get_review_module(db: Session) -> HomeModule | None:
     ).scalars().first()
 
 
+def _get_categories_module(db: Session) -> HomeModule | None:
+    return db.execute(
+        select(HomeModule).where(HomeModule.module_key == "categories").order_by(HomeModule.sort_order.asc())
+    ).scalars().first()
+
+
 def _get_new_tea_module(db: Session) -> HomeModule | None:
     return db.execute(
         select(HomeModule).where(HomeModule.module_key == "new_tea").order_by(HomeModule.sort_order.asc())
@@ -165,14 +195,16 @@ def _safe_payload(module: HomeModule | None) -> dict:
 
 
 @router.get("/cron/order-timeout")
-def cancel_timeout_orders(db: Session = Depends(get_db)):
+def cancel_timeout_orders(key: str = Query(default=""), db: Session = Depends(get_db)):
+    if key != settings.admin_api_key:
+        raise ApiError(40302, "invalid cron key", 403)
     from app.models import OrderItem, ProductSku
     deadline = datetime.utcnow() - timedelta(minutes=30)
     rows = db.execute(
         select(Order).where(Order.status == "PENDING_PAYMENT", Order.created_at < deadline)
     ).scalars().all()
     for o in rows:
-        o.status = "CANCELED"
+        log_order_status_change(db, o, "CANCELED", operator_role="admin", reason="timeout")
         # Restore stock
         order_items = db.execute(select(OrderItem).where(OrderItem.order_id == o.id)).scalars().all()
         for oi in order_items:
@@ -184,7 +216,7 @@ def cancel_timeout_orders(db: Session = Depends(get_db)):
 
 
 @router.get("/home/banner-config")
-def get_home_banner_config(db: Session = Depends(get_db)):
+def get_home_banner_config(_: object = Depends(require_admin), db: Session = Depends(get_db)):
     module = _get_banner_module(db)
     if not module:
         return ok({"title": "推荐", "banners": []})
@@ -197,7 +229,7 @@ def get_home_banner_config(db: Session = Depends(get_db)):
 
 
 @router.put("/home/banner-config")
-def put_home_banner_config(body: BannerConfigPayload, db: Session = Depends(get_db)):
+def put_home_banner_config(body: BannerConfigPayload, _: object = Depends(require_admin), db: Session = Depends(get_db)):
     module = _get_banner_module(db)
     if not module:
         module = HomeModule(
@@ -219,8 +251,48 @@ def put_home_banner_config(body: BannerConfigPayload, db: Session = Depends(get_
     return ok({"updated": True, "count": len(body.banners)})
 
 
+@router.get("/home/category-config")
+def get_home_category_config(_: object = Depends(require_admin), db: Session = Depends(get_db)):
+    module = _get_categories_module(db)
+    if not module:
+        return ok({"title": "分类", "items": [], "updatedAt": 0})
+
+    payload = _safe_payload(module)
+    items = payload.get("items")
+    if not isinstance(items, list):
+        items = []
+    updated_at = payload.get("updatedAt")
+    if not isinstance(updated_at, int):
+        updated_at = 0
+    return ok({"title": module.title or "分类", "items": items, "updatedAt": updated_at})
+
+
+@router.put("/home/category-config")
+def put_home_category_config(body: CategoryConfigPayload, _: object = Depends(require_admin), db: Session = Depends(get_db)):
+    module = _get_categories_module(db)
+    if not module:
+        module = HomeModule(
+            module_key="categories",
+            title=body.title,
+            payload_json="{}",
+            sort_order=2,
+            is_enabled=True,
+        )
+        db.add(module)
+
+    updated_at = int(datetime.utcnow().timestamp())
+    module.title = body.title
+    module.payload_json = json.dumps(
+        {"items": [item.model_dump() for item in body.items], "updatedAt": updated_at},
+        ensure_ascii=False,
+    )
+    module.is_enabled = True
+    db.commit()
+    return ok({"updated": True, "count": len(body.items), "updatedAt": updated_at})
+
+
 @router.get("/home/review-config")
-def get_home_review_config(db: Session = Depends(get_db)):
+def get_home_review_config(_: object = Depends(require_admin), db: Session = Depends(get_db)):
     module = _get_review_module(db)
     if not module:
         return ok({"title": "茶评", "topics": [], "updatedAt": 0})
@@ -236,7 +308,7 @@ def get_home_review_config(db: Session = Depends(get_db)):
 
 
 @router.put("/home/review-config")
-def put_home_review_config(body: ReviewConfigPayload, db: Session = Depends(get_db)):
+def put_home_review_config(body: ReviewConfigPayload, _: object = Depends(require_admin), db: Session = Depends(get_db)):
     module = _get_review_module(db)
     if not module:
         module = HomeModule(
@@ -260,7 +332,7 @@ def put_home_review_config(body: ReviewConfigPayload, db: Session = Depends(get_
 
 
 @router.get("/home/new-tea-config")
-def get_home_new_tea_config(db: Session = Depends(get_db)):
+def get_home_new_tea_config(_: object = Depends(require_admin), db: Session = Depends(get_db)):
     module = _get_new_tea_module(db)
     if not module:
         return ok({"title": "新茶上市", "notice": "限量好茶免费品，品出慢时光", "items": [], "updatedAt": 0})
@@ -286,7 +358,7 @@ def get_home_new_tea_config(db: Session = Depends(get_db)):
 
 
 @router.put("/home/new-tea-config")
-def put_home_new_tea_config(body: NewTeaConfigPayload, db: Session = Depends(get_db)):
+def put_home_new_tea_config(body: NewTeaConfigPayload, _: object = Depends(require_admin), db: Session = Depends(get_db)):
     module = _get_new_tea_module(db)
     if not module:
         module = HomeModule(
@@ -314,7 +386,7 @@ def put_home_new_tea_config(body: NewTeaConfigPayload, db: Session = Depends(get
 
 
 @router.get("/home/promo-config")
-def get_home_promo_config(db: Session = Depends(get_db)):
+def get_home_promo_config(_: object = Depends(require_admin), db: Session = Depends(get_db)):
     module = _get_promo_module(db)
     if not module:
         return ok({"title": "今日秒杀", "sections": [], "updatedAt": 0})
@@ -330,7 +402,7 @@ def get_home_promo_config(db: Session = Depends(get_db)):
 
 
 @router.put("/home/promo-config")
-def put_home_promo_config(body: PromoConfigPayload, db: Session = Depends(get_db)):
+def put_home_promo_config(body: PromoConfigPayload, _: object = Depends(require_admin), db: Session = Depends(get_db)):
     module = _get_promo_module(db)
     if not module:
         module = HomeModule(
@@ -354,37 +426,34 @@ def put_home_promo_config(body: PromoConfigPayload, db: Session = Depends(get_db
 
 
 @router.get("/home/featured-config")
-def get_home_featured_config(db: Session = Depends(get_db)):
+def get_home_featured_config(_: object = Depends(require_admin), db: Session = Depends(get_db)):
     module = _get_featured_module(db)
     if not module:
-        return ok({"title": "精选", "tabs": [], "activeTab": "recommend", "sections": [], "updatedAt": 0})
+        payload = default_featured_payload()
+        return ok(
+            {
+                "title": "精选",
+                "tabs": deepcopy(payload["tabs"]),
+                "activeTab": payload["activeTab"],
+                "sections": deepcopy(payload["sections"]),
+                "updatedAt": payload["updatedAt"],
+            }
+        )
 
-    payload = _safe_payload(module)
-    tabs = payload.get("tabs")
-    if not isinstance(tabs, list):
-        tabs = []
-    active_tab = payload.get("activeTab")
-    if not isinstance(active_tab, str):
-        active_tab = "recommend"
-    sections = payload.get("sections")
-    if not isinstance(sections, list):
-        sections = []
-    updated_at = payload.get("updatedAt")
-    if not isinstance(updated_at, int):
-        updated_at = 0
+    payload = normalize_featured_payload(_safe_payload(module))
     return ok(
         {
             "title": module.title or "精选",
-            "tabs": tabs,
-            "activeTab": active_tab,
-            "sections": sections,
-            "updatedAt": updated_at,
+            "tabs": payload["tabs"],
+            "activeTab": payload["activeTab"],
+            "sections": payload["sections"],
+            "updatedAt": payload["updatedAt"],
         }
     )
 
 
 @router.put("/home/featured-config")
-def put_home_featured_config(body: FeaturedConfigPayload, db: Session = Depends(get_db)):
+def put_home_featured_config(body: FeaturedConfigPayload, _: object = Depends(require_admin), db: Session = Depends(get_db)):
     module = _get_featured_module(db)
     if not module:
         module = HomeModule(

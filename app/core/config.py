@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     jwt_access_expire_min: int = 30
     jwt_refresh_expire_days: int = 14
     payment_mode: str = "mock"
+    admin_api_key: str = "change-admin-key"
+    mock_payment_callback_secret: str = "change-mock-secret"
+    china_area_file: str = "app/data/area-full.json"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

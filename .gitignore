@@ -7,3 +7,4 @@ dist/
 build/
 .vercel/
 .python-version
+.DS_Store

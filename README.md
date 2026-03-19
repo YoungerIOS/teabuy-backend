@@ -20,6 +20,12 @@ cd backend
 alembic upgrade head
 ```
 
+## Seed dev data
+
+```bash
+python -m app.scripts.seed_dev
+```
+
 ## Key endpoints
 
 - `GET /api/v1/health`
@@ -27,3 +33,5 @@ alembic upgrade head
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `GET /api/v1/home` (Bearer token)
+- `POST /api/v1/orders` (`Idempotency-Key` required)
+- `POST /api/v1/payments/mock/callback` (requires signature)
