@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.deps import require_admin
 from app.core.errors import ApiError
 from app.core.response import ok
-from app.models import HomeModule, Order
+from app.models import HomeModule, Notification, Order, User
 from app.modules.home.router import default_featured_payload, normalize_featured_payload
 from app.services.order_status import log_order_status_change
 
@@ -145,6 +145,17 @@ class FeaturedConfigPayload(BaseModel):
     tabs: list[FeaturedConfigTab] = []
     activeTab: str = "recommend"
     sections: list[FeaturedConfigSection]
+
+
+class InternalNotificationCreatePayload(BaseModel):
+    userId: str
+    title: str
+    content: str = ""
+
+
+class InternalNotificationBroadcastPayload(BaseModel):
+    title: str
+    content: str = ""
 
 
 def _get_banner_module(db: Session) -> HomeModule | None:
@@ -479,3 +490,67 @@ def put_home_featured_config(body: FeaturedConfigPayload, _: object = Depends(re
     module.is_enabled = True
     db.commit()
     return ok({"updated": True, "count": len(body.sections), "updatedAt": updated_at})
+
+
+@router.post("/notifications")
+def post_internal_notification(
+    body: InternalNotificationCreatePayload, _: object = Depends(require_admin), db: Session = Depends(get_db)
+):
+    user = db.get(User, body.userId)
+    if not user:
+        raise ApiError(40451, "user not found", 404)
+    row = Notification(user_id=body.userId, title=body.title, content=body.content, is_read=False)
+    db.add(row)
+    db.commit()
+    return ok({"id": row.id, "userId": row.user_id, "title": row.title, "content": row.content, "createdAt": row.created_at.isoformat()})
+
+
+@router.post("/notifications/broadcast")
+def post_internal_notification_broadcast(
+    body: InternalNotificationBroadcastPayload, _: object = Depends(require_admin), db: Session = Depends(get_db)
+):
+    users = db.execute(select(User).where(User.status == "active")).scalars().all()
+    if not users:
+        return ok({"sent": 0})
+
+    now = datetime.utcnow()
+    rows = [
+        Notification(user_id=u.id, title=body.title, content=body.content, is_read=False, created_at=now)
+        for u in users
+    ]
+    db.add_all(rows)
+    db.commit()
+    return ok({"sent": len(rows)})
+
+
+@router.get("/notifications")
+def get_internal_notifications(
+    user_id: str = Query(default="", alias="userId"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100, alias="pageSize"),
+    _: object = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    stmt = select(Notification)
+    if user_id:
+        stmt = stmt.where(Notification.user_id == user_id)
+    rows = db.execute(
+        stmt.order_by(Notification.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    ).scalars().all()
+    return ok(
+        {
+            "page": page,
+            "pageSize": page_size,
+            "items": [
+                {
+                    "id": n.id,
+                    "userId": n.user_id,
+                    "title": n.title,
+                    "content": n.content,
+                    "isRead": n.is_read,
+                    "createdAt": n.created_at.isoformat(),
+                }
+                for n in rows
+            ],
+        }
+    )
