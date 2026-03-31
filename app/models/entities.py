@@ -188,7 +188,13 @@ class Notification(Base):
     title: Mapped[str] = mapped_column(String(120))
     content: Mapped[str] = mapped_column(Text, default="")
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    link_type: Mapped[str] = mapped_column(String(30), default="")
+    link_value: Mapped[str] = mapped_column(String(200), default="")
+    type: Mapped[str] = mapped_column(String(30), default="system")
+    priority: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class IdempotencyKey(Base):
@@ -234,3 +240,4 @@ class OrderStatusLog(Base):
 Index("ix_orders_user_status_created", Order.user_id, Order.status, Order.created_at.desc())
 Index("ix_payments_order_created", Payment.order_id, Payment.created_at.desc())
 Index("ix_refunds_user_status_created", Refund.user_id, Refund.status, Refund.created_at.desc())
+Index("ix_notifications_user_read_created", Notification.user_id, Notification.is_read, Notification.created_at.desc())
