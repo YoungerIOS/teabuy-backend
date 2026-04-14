@@ -7,6 +7,7 @@ from app.core.response import ok
 from app.modules.address.router import router as address_router
 from app.modules.auth.router import router as auth_router
 from app.modules.cart.router import router as cart_router
+from app.modules.checkin.router import router as checkin_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.health.router import router as health_router
 from app.modules.home.router import router as home_router
@@ -36,6 +37,7 @@ app.include_router(auth_router, prefix=api_prefix)
 app.include_router(home_router, prefix=api_prefix)
 app.include_router(catalog_router, prefix=api_prefix)
 app.include_router(cart_router, prefix=api_prefix)
+app.include_router(checkin_router, prefix=api_prefix)
 app.include_router(address_router, prefix=api_prefix)
 app.include_router(order_router, prefix=api_prefix)
 app.include_router(payment_router, prefix=api_prefix)

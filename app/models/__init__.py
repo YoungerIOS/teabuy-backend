@@ -1,4 +1,5 @@
 from app.models.entities import (
+    CheckinRecord,
     CartItem,
     Category,
     HomeModule,
@@ -39,5 +40,6 @@ __all__ = [
     "Refund",
     "Review",
     "Notification",
+    "CheckinRecord",
     "IdempotencyKey",
 ]
